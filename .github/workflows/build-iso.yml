@@ -9,43 +9,42 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    container:
+      image: debian:bookworm
+      options: --privileged
 
     steps:
+      - name: Install git for checkout
+        run: |
+          apt-get update -qq
+          apt-get install -y git
+
       - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Install live-build dependencies
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y live-build debootstrap xorriso squashfs-tools \
-            debian-archive-keyring isolinux syslinux-common syslinux-utils \
-            grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
-            mtools dosfstools
+          apt-get install -y live-build debootstrap xorriso squashfs-tools \
+            isolinux syslinux-common syslinux-utils \
+            dosfstools mtools
 
       - name: Configure live-build
         run: |
           mkdir -p build && cd build
 
-          export DEBOOTSTRAP_OPTIONS="--keyring=/usr/share/keyrings/debian-archive-keyring.gpg"
-
-          sudo -E lb config \
-            --mode debian \
-            --system live \
+          lb config \
             --distribution bookworm \
-            --parent-distribution bookworm \
             --debian-installer false \
             --archive-areas "main contrib non-free non-free-firmware" \
-            --parent-archive-areas "main contrib non-free non-free-firmware" \
             --architectures amd64 \
             --binary-images iso-hybrid \
             --bootappend-live "boot=live components quiet splash" \
             --mirror-bootstrap "http://deb.debian.org/debian" \
-            --parent-mirror-bootstrap "http://deb.debian.org/debian" \
             --mirror-chroot "http://deb.debian.org/debian" \
-            --parent-mirror-chroot "http://deb.debian.org/debian" \
             --mirror-binary "http://deb.debian.org/debian" \
-            --parent-mirror-binary "http://deb.debian.org/debian" \
-            --security false \
+            --mirror-chroot-security "http://deb.debian.org/debian-security" \
+            --mirror-binary-security "http://deb.debian.org/debian-security" \
+            --security true \
             --linux-flavours "none" \
             --linux-packages "none" \
             --iso-application "iLinux" \
@@ -54,34 +53,19 @@ jobs:
             --memtest none \
             --win32-loader false
 
-          echo "deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware" | \
-            sudo tee config/archives/security.list.chroot > /dev/null
-          sudo cp config/archives/security.list.chroot config/archives/security.list.binary
+          cp ../config/package-lists/ilinux.list.chroot config/package-lists/
+          cp -a ../config/includes.chroot/* config/includes.chroot/ 2>/dev/null || true
 
-          sudo cp ../config/package-lists/ilinux.list.chroot config/package-lists/
-          sudo cp -a ../config/includes.chroot/* config/includes.chroot/ 2>/dev/null || true
+          mkdir -p config/hooks/live
+          cp -a ../config/hooks/live/* config/hooks/live/ 2>/dev/null || true
 
-          sudo mkdir -p config/hooks/live
-          sudo cp -a ../config/hooks/live/* config/hooks/live/ 2>/dev/null || true
-
-          sudo mkdir -p config/bootloaders/grub-pc
-          sudo cp ../config/bootloaders/grub-pc/grub.cfg config/bootloaders/grub-pc/ 2>/dev/null || true
-
-      - name: Prepare isolinux files on host
-        run: |
-          sudo mkdir -p /root/isolinux
-          sudo cp /usr/lib/ISOLINUX/isolinux.bin /root/isolinux/
-          sudo cp /usr/lib/ISOLINUX/isohdpfx.bin /root/isolinux/
-          for f in vesamenu.c32 ldlinux.c32 libcom32.c32 libutil.c32 hdt.c32 libmenu.c32 libgpl.c32 reboot.c32 poweroff.c32; do
-            sudo cp "/usr/lib/syslinux/modules/bios/$f" /root/isolinux/ 2>/dev/null || true
-          done
-          sudo ls /root/isolinux/
+          mkdir -p config/bootloaders/grub-pc
+          cp ../config/bootloaders/grub-pc/grub.cfg config/bootloaders/grub-pc/ 2>/dev/null || true
 
       - name: Build ISO
         run: |
           cd build
-          export DEBOOTSTRAP_OPTIONS="--keyring=/usr/share/keyrings/debian-archive-keyring.gpg"
-          sudo -E lb build
+          lb build
 
       - name: Upload ISO artifact
         if: always()
