@@ -43,24 +43,18 @@ jobs:
             --parent-mirror-chroot "http://deb.debian.org/debian" \
             --mirror-binary "http://deb.debian.org/debian" \
             --parent-mirror-binary "http://deb.debian.org/debian" \
-            --mirror-chroot-security "http://deb.debian.org/debian-security" \
-            --parent-mirror-chroot-security "http://deb.debian.org/debian-security" \
-            --mirror-binary-security "http://deb.debian.org/debian-security" \
-            --parent-mirror-binary-security "http://deb.debian.org/debian-security" \
-            --security true \
+            --security false \
+            --updates false \
             --iso-application "iLinux" \
             --iso-publisher "iLinux Project" \
             --iso-volume "iLinux 1.0" \
             --memtest none \
             --win32-loader false
 
-          # Fix: Bookworm security uses bookworm-security, not bookworm/updates
-          sudo sed -i 's|bookworm/updates|bookworm-security|g' config/bootstrap 2>/dev/null || true
-          sudo sed -i 's|bookworm/updates|bookworm-security|g' config/chroot 2>/dev/null || true
-          sudo sed -i 's|bookworm/updates|bookworm-security|g' config/binary 2>/dev/null || true
-          for f in config/archives/*.list.chroot config/archives/*.list.binary; do
-            [ -f "$f" ] && sudo sed -i 's|bookworm/updates|bookworm-security|g' "$f"
-          done
+          # Add correct Bookworm security repo as custom archive
+          echo "deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware" | \
+            sudo tee config/archives/security.list.chroot > /dev/null
+          sudo cp config/archives/security.list.chroot config/archives/security.list.binary
 
           sudo cp ../config/package-lists/ilinux.list.chroot config/package-lists/
           sudo cp -a ../config/includes.chroot/* config/includes.chroot/ 2>/dev/null || true
@@ -70,16 +64,6 @@ jobs:
 
           sudo mkdir -p config/bootloaders/grub-pc
           sudo cp ../config/bootloaders/grub-pc/grub.cfg config/bootloaders/grub-pc/ 2>/dev/null || true
-
-      - name: Fix security suite in generated configs
-        run: |
-          cd build
-          # Replace any bookworm/updates with bookworm-security in all config files
-          find config/ -type f -exec sudo grep -l 'bookworm/updates' {} \; 2>/dev/null | while read f; do
-            sudo sed -i 's|bookworm/updates|bookworm-security|g' "$f"
-            echo "Fixed: $f"
-          done
-          echo "Security suite fix applied"
 
       - name: Build ISO
         run: |
