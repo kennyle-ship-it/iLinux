@@ -1,4 +1,12 @@
 # ── iLinux Package List ──
+# Kernel (installed via package list to bypass live-build auto-detection)
+linux-image-amd64
+linux-headers-amd64
+live-boot
+live-config
+live-config-systemd
+systemd-sysv
+
 # Xfce Desktop
 xfce4
 xfce4-goodies
