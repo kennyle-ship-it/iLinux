@@ -2,43 +2,37 @@
 # ── iLinux Theme Installation Hook ──
 # Runs inside the chroot during ISO build to install macOS themes
 
-set -e
-
 THEME_DIR="/usr/share/themes"
 ICON_DIR="/usr/share/icons"
-CURSOR_DIR="/usr/share/icons"
 WALLPAPER_DIR="/usr/share/backgrounds/ilinux"
 
+install_theme() {
+    local repo="$1" dir="$2"
+    echo "[iLinux] Cloning $repo..."
+    cd /tmp
+    if git clone --depth=1 "https://github.com/vinceliuice/${repo}.git" 2>/dev/null; then
+        cd "$repo"
+        if [ -f install.sh ]; then
+            bash install.sh $3 || echo "[iLinux] WARNING: $repo install.sh failed"
+        fi
+        cd /tmp && rm -rf "$repo"
+    else
+        echo "[iLinux] WARNING: Could not clone $repo (no network?), skipping"
+    fi
+}
+
 echo "[iLinux] Installing WhiteSur GTK theme..."
-cd /tmp
-git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git
-cd WhiteSur-gtk-theme
-./install.sh -l -c Light -c Dark
-cd /tmp && rm -rf WhiteSur-gtk-theme
+install_theme "WhiteSur-gtk-theme" "WhiteSur-gtk-theme" "-l -c Light -c Dark"
 
 echo "[iLinux] Installing WhiteSur icon theme..."
-cd /tmp
-git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git
-cd WhiteSur-icon-theme
-./install.sh
-cd /tmp && rm -rf WhiteSur-icon-theme
+install_theme "WhiteSur-icon-theme" "WhiteSur-icon-theme" ""
 
 echo "[iLinux] Installing WhiteSur cursor theme..."
-cd /tmp
-git clone --depth=1 https://github.com/vinceliuice/WhiteSur-cursors.git
-cd WhiteSur-cursors
-./install.sh
-cd /tmp && rm -rf WhiteSur-cursors
-
-echo "[iLinux] Installing Albert launcher (Spotlight-like)..."
-wget -qO /tmp/albert.deb "https://download.opensuse.org/repositories/home:/manuelschneid3r/Debian_12/amd64/albert_0.24.3-0_amd64.deb" || true
-if [ -f /tmp/albert.deb ]; then
-    dpkg -i /tmp/albert.deb || apt-get -f install -y
-    rm -f /tmp/albert.deb
-fi
+install_theme "WhiteSur-cursors" "WhiteSur-cursors" ""
 
 echo "[iLinux] Generating macOS-style wallpaper..."
-cat > /tmp/gen_wallpaper.py << 'PYEOF'
+if command -v python3 &>/dev/null; then
+    python3 - << 'PYEOF'
 import struct, zlib, os
 
 width, height = 1920, 1080
@@ -46,13 +40,10 @@ rows = []
 for y in range(height):
     row = b'\x00'
     for x in range(width):
-        # Gradient from deep blue-purple to lighter blue (macOS Monterey style)
         r = int(20 + (y / height) * 40 + (x / width) * 30)
         g = int(20 + (y / height) * 30 + (x / width) * 50)
         b = int(80 + (y / height) * 100 + (x / width) * 60)
-        r = min(255, max(0, r))
-        g = min(255, max(0, g))
-        b = min(255, max(0, b))
+        r, g, b = min(255, max(0, r)), min(255, max(0, g)), min(255, max(0, b))
         row += struct.pack('BBB', r, g, b)
     rows.append(row)
 
@@ -68,24 +59,15 @@ def make_png(w, h, rows):
 os.makedirs('/usr/share/backgrounds/ilinux', exist_ok=True)
 with open('/usr/share/backgrounds/ilinux/default.png', 'wb') as f:
     f.write(make_png(width, height, rows))
-print("Wallpaper generated.")
+print("[iLinux] Wallpaper generated.")
 PYEOF
-python3 /tmp/gen_wallpaper.py || echo "[iLinux] Wallpaper generation skipped (python3 not available during build)"
-rm -f /tmp/gen_wallpaper.py
+else
+    echo "[iLinux] python3 not available, skipping wallpaper generation"
+fi
 
 echo "[iLinux] Setting permissions..."
 chmod -R 755 "$THEME_DIR/WhiteSur"* 2>/dev/null || true
 chmod -R 755 "$ICON_DIR/WhiteSur"* 2>/dev/null || true
-
-echo "[iLinux] Configuring Plank dock defaults..."
-mkdir -p /etc/skel/.config/plank/dock1/launchers
-
-for app in thunar firefox-esr xfce4-terminal xfce4-settings-manager; do
-    cat > "/etc/skel/.config/plank/dock1/launchers/${app}.dockitem" << EOF
-[PlankDockItemPreferences]
-Launcher=file:///usr/share/applications/${app}.desktop
-EOF
-done
 
 echo "[iLinux] Creating iLinux branding..."
 mkdir -p /usr/share/ilinux
@@ -103,4 +85,4 @@ if [ -f /etc/os-release ]; then
     sed -i 's/^NAME=.*/NAME="iLinux"/' /etc/os-release
 fi
 
-echo "[iLinux] Theme installation complete."
+echo "[iLinux] Theme hook complete."
