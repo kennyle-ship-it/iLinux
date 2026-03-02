@@ -44,7 +44,6 @@ jobs:
             --mirror-binary "http://deb.debian.org/debian" \
             --parent-mirror-binary "http://deb.debian.org/debian" \
             --security false \
-            --updates false \
             --iso-application "iLinux" \
             --iso-publisher "iLinux Project" \
             --iso-volume "iLinux 1.0" \
