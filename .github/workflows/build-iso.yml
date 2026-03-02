@@ -27,6 +27,7 @@ jobs:
 
           sudo -E lb config \
             --mode debian \
+            --system live \
             --distribution bookworm \
             --parent-distribution bookworm \
             --debian-installer live \
@@ -46,11 +47,20 @@ jobs:
             --parent-mirror-chroot-security "http://deb.debian.org/debian-security" \
             --mirror-binary-security "http://deb.debian.org/debian-security" \
             --parent-mirror-binary-security "http://deb.debian.org/debian-security" \
+            --security true \
             --iso-application "iLinux" \
             --iso-publisher "iLinux Project" \
             --iso-volume "iLinux 1.0" \
             --memtest none \
             --win32-loader false
+
+          # Fix: Bookworm security uses bookworm-security, not bookworm/updates
+          sudo sed -i 's|bookworm/updates|bookworm-security|g' config/bootstrap 2>/dev/null || true
+          sudo sed -i 's|bookworm/updates|bookworm-security|g' config/chroot 2>/dev/null || true
+          sudo sed -i 's|bookworm/updates|bookworm-security|g' config/binary 2>/dev/null || true
+          for f in config/archives/*.list.chroot config/archives/*.list.binary; do
+            [ -f "$f" ] && sudo sed -i 's|bookworm/updates|bookworm-security|g' "$f"
+          done
 
           sudo cp ../config/package-lists/ilinux.list.chroot config/package-lists/
           sudo cp -a ../config/includes.chroot/* config/includes.chroot/ 2>/dev/null || true
@@ -61,22 +71,33 @@ jobs:
           sudo mkdir -p config/bootloaders/grub-pc
           sudo cp ../config/bootloaders/grub-pc/grub.cfg config/bootloaders/grub-pc/ 2>/dev/null || true
 
+      - name: Fix security suite in generated configs
+        run: |
+          cd build
+          # Replace any bookworm/updates with bookworm-security in all config files
+          find config/ -type f -exec sudo grep -l 'bookworm/updates' {} \; 2>/dev/null | while read f; do
+            sudo sed -i 's|bookworm/updates|bookworm-security|g' "$f"
+            echo "Fixed: $f"
+          done
+          echo "Security suite fix applied"
+
       - name: Build ISO
         run: |
           cd build
           export DEBOOTSTRAP_OPTIONS="--keyring=/usr/share/keyrings/debian-archive-keyring.gpg"
-          sudo -E lb build 2>&1 | tail -300
+          sudo -E lb build
 
       - name: Upload ISO artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ilinux-1.0-amd64
           path: build/*.iso
           retention-days: 30
           compression-level: 0
+          if-no-files-found: warn
 
       - name: Show ISO info
         if: always()
         run: |
-          ls -lh build/*.iso 2>/dev/null || echo "No ISO found — check build step logs"
-          echo "Build complete!"
+          ls -lh build/*.iso 2>/dev/null || echo "No ISO found - check build step logs"
