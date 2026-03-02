@@ -17,7 +17,10 @@ jobs:
       - name: Install live-build dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y live-build debootstrap xorriso squashfs-tools debian-archive-keyring isolinux syslinux-common syslinux-utils
+          sudo apt-get install -y live-build debootstrap xorriso squashfs-tools \
+            debian-archive-keyring isolinux syslinux-common syslinux-utils \
+            grub-pc-bin grub-efi-amd64-bin grub-efi-amd64-signed shim-signed \
+            mtools dosfstools
 
       - name: Configure live-build
         run: |
@@ -35,6 +38,7 @@ jobs:
             --parent-archive-areas "main contrib non-free non-free-firmware" \
             --architectures amd64 \
             --binary-images iso-hybrid \
+            --bootloaders "grub-efi" \
             --bootappend-live "boot=live components quiet splash" \
             --mirror-bootstrap "http://deb.debian.org/debian" \
             --parent-mirror-bootstrap "http://deb.debian.org/debian" \
@@ -51,7 +55,6 @@ jobs:
             --memtest none \
             --win32-loader false
 
-          # Add correct Bookworm security repo as custom archive
           echo "deb http://deb.debian.org/debian-security bookworm-security main contrib non-free non-free-firmware" | \
             sudo tee config/archives/security.list.chroot > /dev/null
           sudo cp config/archives/security.list.chroot config/archives/security.list.binary
@@ -64,17 +67,6 @@ jobs:
 
           sudo mkdir -p config/bootloaders/grub-pc
           sudo cp ../config/bootloaders/grub-pc/grub.cfg config/bootloaders/grub-pc/ 2>/dev/null || true
-
-      - name: Create isolinux directory for live-build
-        run: |
-          sudo mkdir -p /root/isolinux
-          sudo cp /usr/lib/ISOLINUX/isolinux.bin /root/isolinux/ 2>/dev/null || true
-          sudo cp /usr/lib/ISOLINUX/isohdpfx.bin /root/isolinux/ 2>/dev/null || true
-          sudo cp /usr/lib/syslinux/modules/bios/vesamenu.c32 /root/isolinux/ 2>/dev/null || true
-          sudo cp /usr/lib/syslinux/modules/bios/ldlinux.c32 /root/isolinux/ 2>/dev/null || true
-          sudo cp /usr/lib/syslinux/modules/bios/libcom32.c32 /root/isolinux/ 2>/dev/null || true
-          sudo cp /usr/lib/syslinux/modules/bios/libutil.c32 /root/isolinux/ 2>/dev/null || true
-          sudo ls -la /root/isolinux/
 
       - name: Build ISO
         run: |
