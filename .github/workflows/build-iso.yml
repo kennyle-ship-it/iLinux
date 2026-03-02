@@ -17,7 +17,7 @@ jobs:
       - name: Install live-build dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y live-build debootstrap xorriso squashfs-tools
+          sudo apt-get install -y live-build debootstrap xorriso squashfs-tools debian-archive-keyring
 
       - name: Configure live-build
         run: |
@@ -25,12 +25,25 @@ jobs:
 
           sudo lb config \
             --distribution bookworm \
+            --parent-distribution bookworm \
             --debian-installer live \
             --debian-installer-gui true \
             --archive-areas "main contrib non-free non-free-firmware" \
+            --parent-archive-areas "main contrib non-free non-free-firmware" \
             --architectures amd64 \
             --binary-images iso-hybrid \
             --bootappend-live "boot=live components quiet splash" \
+            --mirror-bootstrap "http://deb.debian.org/debian" \
+            --parent-mirror-bootstrap "http://deb.debian.org/debian" \
+            --mirror-chroot "http://deb.debian.org/debian" \
+            --parent-mirror-chroot "http://deb.debian.org/debian" \
+            --mirror-binary "http://deb.debian.org/debian" \
+            --parent-mirror-binary "http://deb.debian.org/debian" \
+            --mirror-chroot-security "http://deb.debian.org/debian-security" \
+            --parent-mirror-chroot-security "http://deb.debian.org/debian-security" \
+            --mirror-binary-security "http://deb.debian.org/debian-security" \
+            --parent-mirror-binary-security "http://deb.debian.org/debian-security" \
+            --debootstrap-options "--keyring=/usr/share/keyrings/debian-archive-keyring.gpg" \
             --iso-application "iLinux" \
             --iso-publisher "iLinux Project" \
             --iso-volume "iLinux 1.0" \
@@ -49,7 +62,7 @@ jobs:
       - name: Build ISO
         run: |
           cd build
-          sudo lb build 2>&1 | tail -200
+          sudo lb build 2>&1 | tail -300
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
