@@ -45,8 +45,8 @@ jobs:
             --mirror-chroot-security "http://deb.debian.org/debian-security" \
             --mirror-binary-security "http://deb.debian.org/debian-security" \
             --security true \
-            --linux-flavours "none" \
-            --linux-packages "none" \
+            --linux-flavours "amd64" \
+            --linux-packages "linux-image" \
             --iso-application "iLinux" \
             --iso-publisher "iLinux Project" \
             --iso-volume "iLinux 1.0" \

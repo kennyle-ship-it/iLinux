@@ -1,7 +1,5 @@
 # ── iLinux Package List ──
-# Kernel (installed via package list to bypass live-build auto-detection)
-linux-image-amd64
-linux-headers-amd64
+# Live system essentials
 live-boot
 live-config
 live-config-systemd
