@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=iLinux Welcome
+Exec=/usr/local/bin/ilinux-welcome
+Hidden=false
+X-GNOME-Autostart-enabled=true
+Comment=Welcome screen for iLinux

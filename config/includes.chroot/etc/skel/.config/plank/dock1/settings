@@ -1,0 +1,21 @@
+[PlankDockPreferences]
+#shared settings for the dock
+Alignment=3
+CurrentWorkspaceOnly=false
+DockItems=thunar.dockitem;;firefox-esr.dockitem;;xfce4-terminal.dockitem;;xfce4-settings-manager.dockitem
+HideDelay=300
+HideMode=3
+IconSize=48
+ItemsAlignment=3
+LockItems=false
+Monitor=
+Offset=0
+PinnedOnly=false
+Position=3
+PressureReveal=false
+ShowDockItem=false
+Theme=Transparent
+TooltipsEnabled=true
+UnhideDelay=0
+ZoomEnabled=true
+ZoomPercent=150

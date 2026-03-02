@@ -1,0 +1,66 @@
+name: Build iLinux ISO
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install live-build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y live-build debootstrap xorriso squashfs-tools
+
+      - name: Configure live-build
+        run: |
+          mkdir -p build && cd build
+
+          sudo lb config \
+            --distribution bookworm \
+            --debian-installer live \
+            --debian-installer-gui true \
+            --archive-areas "main contrib non-free non-free-firmware" \
+            --architectures amd64 \
+            --binary-images iso-hybrid \
+            --bootappend-live "boot=live components quiet splash" \
+            --iso-application "iLinux" \
+            --iso-publisher "iLinux Project" \
+            --iso-volume "iLinux 1.0" \
+            --image-name "ilinux" \
+            --memtest none \
+            --win32-loader false
+
+          sudo cp ../config/package-lists/ilinux.list.chroot config/package-lists/
+          sudo cp -a ../config/includes.chroot/* config/includes.chroot/ 2>/dev/null || true
+
+          sudo mkdir -p config/hooks/live
+          sudo cp -a ../config/hooks/live/* config/hooks/live/ 2>/dev/null || true
+
+          sudo mkdir -p config/bootloaders/grub-pc
+          sudo cp ../config/bootloaders/grub-pc/grub.cfg config/bootloaders/grub-pc/ 2>/dev/null || true
+
+      - name: Build ISO
+        run: |
+          cd build
+          sudo lb build 2>&1 | tail -100
+
+      - name: Upload ISO artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ilinux-1.0-amd64
+          path: build/*.iso
+          retention-days: 30
+          compression-level: 0
+
+      - name: Show ISO info
+        run: |
+          ls -lh build/*.iso
+          echo "Build complete!"

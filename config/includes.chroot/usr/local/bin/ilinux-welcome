@@ -1,0 +1,34 @@
+#!/bin/bash
+# iLinux Welcome Script - runs on first login
+
+WELCOME_FLAG="$HOME/.config/ilinux-welcomed"
+
+if [ -f "$WELCOME_FLAG" ]; then
+    exit 0
+fi
+
+xfce4-terminal --title="Welcome to iLinux" --geometry=80x30 --hold -e bash -c '
+echo ""
+echo "  ╔══════════════════════════════════════════╗"
+echo "  ║                                          ║"
+echo "  ║        Welcome to iLinux 1.0              ║"
+echo "  ║        Linux in a macOS Theme             ║"
+echo "  ║                                          ║"
+echo "  ╚══════════════════════════════════════════╝"
+echo ""
+echo "  Desktop: Xfce with WhiteSur macOS theme"
+echo "  Dock:    Plank (bottom of screen)"
+echo "  Panel:   Top bar (macOS-style menu bar)"
+echo ""
+echo "  Tips:"
+echo "    - Click the apple icon (top-left) for app menu"
+echo "    - Drag apps to Plank dock to pin them"
+echo "    - Right-click desktop for options"
+echo ""
+neofetch 2>/dev/null
+echo ""
+echo "  Press Enter to close this window..."
+read
+' &
+
+touch "$WELCOME_FLAG"

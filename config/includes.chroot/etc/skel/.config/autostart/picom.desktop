@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Picom Compositor
+Exec=picom --backend glx --vsync --shadow --corner-radius 12 --fade-in-step 0.06 --fade-out-step 0.06 --inactive-opacity 0.95 -b
+Hidden=false
+X-GNOME-Autostart-enabled=true
+Comment=Window compositor for shadows and rounded corners

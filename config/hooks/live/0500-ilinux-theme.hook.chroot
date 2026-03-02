@@ -1,0 +1,106 @@
+#!/bin/bash
+# ── iLinux Theme Installation Hook ──
+# Runs inside the chroot during ISO build to install macOS themes
+
+set -e
+
+THEME_DIR="/usr/share/themes"
+ICON_DIR="/usr/share/icons"
+CURSOR_DIR="/usr/share/icons"
+WALLPAPER_DIR="/usr/share/backgrounds/ilinux"
+
+echo "[iLinux] Installing WhiteSur GTK theme..."
+cd /tmp
+git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git
+cd WhiteSur-gtk-theme
+./install.sh -l -c Light -c Dark
+cd /tmp && rm -rf WhiteSur-gtk-theme
+
+echo "[iLinux] Installing WhiteSur icon theme..."
+cd /tmp
+git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git
+cd WhiteSur-icon-theme
+./install.sh
+cd /tmp && rm -rf WhiteSur-icon-theme
+
+echo "[iLinux] Installing WhiteSur cursor theme..."
+cd /tmp
+git clone --depth=1 https://github.com/vinceliuice/WhiteSur-cursors.git
+cd WhiteSur-cursors
+./install.sh
+cd /tmp && rm -rf WhiteSur-cursors
+
+echo "[iLinux] Installing Albert launcher (Spotlight-like)..."
+wget -qO /tmp/albert.deb "https://download.opensuse.org/repositories/home:/manuelschneid3r/Debian_12/amd64/albert_0.24.3-0_amd64.deb" || true
+if [ -f /tmp/albert.deb ]; then
+    dpkg -i /tmp/albert.deb || apt-get -f install -y
+    rm -f /tmp/albert.deb
+fi
+
+echo "[iLinux] Generating macOS-style wallpaper..."
+cat > /tmp/gen_wallpaper.py << 'PYEOF'
+import struct, zlib, os
+
+width, height = 1920, 1080
+rows = []
+for y in range(height):
+    row = b'\x00'
+    for x in range(width):
+        # Gradient from deep blue-purple to lighter blue (macOS Monterey style)
+        r = int(20 + (y / height) * 40 + (x / width) * 30)
+        g = int(20 + (y / height) * 30 + (x / width) * 50)
+        b = int(80 + (y / height) * 100 + (x / width) * 60)
+        r = min(255, max(0, r))
+        g = min(255, max(0, g))
+        b = min(255, max(0, b))
+        row += struct.pack('BBB', r, g, b)
+    rows.append(row)
+
+def make_png(w, h, rows):
+    def chunk(ctype, data):
+        c = ctype + data
+        return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+    sig = b'\x89PNG\r\n\x1a\n'
+    ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
+    raw = b''.join(rows)
+    return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
+
+os.makedirs('/usr/share/backgrounds/ilinux', exist_ok=True)
+with open('/usr/share/backgrounds/ilinux/default.png', 'wb') as f:
+    f.write(make_png(width, height, rows))
+print("Wallpaper generated.")
+PYEOF
+python3 /tmp/gen_wallpaper.py || echo "[iLinux] Wallpaper generation skipped (python3 not available during build)"
+rm -f /tmp/gen_wallpaper.py
+
+echo "[iLinux] Setting permissions..."
+chmod -R 755 "$THEME_DIR/WhiteSur"* 2>/dev/null || true
+chmod -R 755 "$ICON_DIR/WhiteSur"* 2>/dev/null || true
+
+echo "[iLinux] Configuring Plank dock defaults..."
+mkdir -p /etc/skel/.config/plank/dock1/launchers
+
+for app in thunar firefox-esr xfce4-terminal xfce4-settings-manager; do
+    cat > "/etc/skel/.config/plank/dock1/launchers/${app}.dockitem" << EOF
+[PlankDockItemPreferences]
+Launcher=file:///usr/share/applications/${app}.desktop
+EOF
+done
+
+echo "[iLinux] Creating iLinux branding..."
+mkdir -p /usr/share/ilinux
+cat > /usr/share/ilinux/info << EOF
+DISTRO_NAME="iLinux"
+DISTRO_VERSION="1.0"
+DISTRO_CODENAME="Cupertino"
+DISTRO_DESCRIPTION="Linux in a macOS Theme"
+DISTRO_ARCH="x86_64"
+DISTRO_DESKTOP="Xfce"
+EOF
+
+if [ -f /etc/os-release ]; then
+    sed -i 's/^PRETTY_NAME=.*/PRETTY_NAME="iLinux 1.0 (Cupertino)"/' /etc/os-release
+    sed -i 's/^NAME=.*/NAME="iLinux"/' /etc/os-release
+fi
+
+echo "[iLinux] Theme installation complete."

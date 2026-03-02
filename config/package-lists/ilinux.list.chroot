@@ -1,0 +1,77 @@
+# ── iLinux Package List ──
+# Xfce Desktop
+xfce4
+xfce4-goodies
+xfce4-terminal
+xfce4-whiskermenu-plugin
+xfce4-panel-profiles
+thunar
+thunar-archive-plugin
+thunar-volman
+mousepad
+ristretto
+parole
+xfce4-screenshooter
+xfce4-taskmanager
+xfce4-power-manager
+xfce4-notifyd
+
+# Display / Login
+lightdm
+lightdm-gtk-greeter
+lightdm-gtk-greeter-settings
+
+# macOS-like Dock
+plank
+
+# Compositing (for shadows, transparency)
+picom
+
+# Networking
+network-manager
+network-manager-gnome
+
+# Audio
+pulseaudio
+pavucontrol
+
+# System utilities
+gvfs
+gvfs-backends
+udisks2
+policykit-1-gnome
+synaptic
+gnome-disk-utility
+baobab
+file-roller
+evince
+gnome-calculator
+gnome-system-monitor
+htop
+neofetch
+
+# Fonts (macOS-like)
+fonts-inter
+fonts-noto
+fonts-noto-color-emoji
+fonts-liberation2
+
+# Theming deps
+git
+wget
+curl
+sassc
+gtk2-engines-murrine
+gnome-themes-extra
+libglib2.0-dev
+
+# Web browser
+firefox-esr
+
+# Build tools for theme compilation
+make
+optipng
+inkscape
+
+# Firmware
+firmware-linux-free
