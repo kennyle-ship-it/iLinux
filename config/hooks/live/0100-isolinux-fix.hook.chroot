@@ -1,0 +1,11 @@
+#!/bin/bash
+set -e
+mkdir -p /root/isolinux
+if [ -d /usr/lib/ISOLINUX ]; then
+    cp /usr/lib/ISOLINUX/isolinux.bin /root/isolinux/ 2>/dev/null || true
+    cp /usr/lib/ISOLINUX/isohdpfx.bin /root/isolinux/ 2>/dev/null || true
+fi
+if [ -d /usr/lib/syslinux/modules/bios ]; then
+    cp /usr/lib/syslinux/modules/bios/*.c32 /root/isolinux/ 2>/dev/null || true
+fi
+ls /root/isolinux/ 2>/dev/null || echo "isolinux dir empty"
