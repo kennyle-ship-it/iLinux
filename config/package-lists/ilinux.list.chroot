@@ -6,6 +6,8 @@ live-boot
 live-config
 live-config-systemd
 systemd-sysv
+isolinux
+syslinux-common
 
 # Xfce Desktop
 xfce4
