@@ -23,7 +23,10 @@ jobs:
         run: |
           mkdir -p build && cd build
 
-          sudo lb config \
+          export DEBOOTSTRAP_OPTIONS="--keyring=/usr/share/keyrings/debian-archive-keyring.gpg"
+
+          sudo -E lb config \
+            --mode debian \
             --distribution bookworm \
             --parent-distribution bookworm \
             --debian-installer live \
@@ -43,7 +46,6 @@ jobs:
             --parent-mirror-chroot-security "http://deb.debian.org/debian-security" \
             --mirror-binary-security "http://deb.debian.org/debian-security" \
             --parent-mirror-binary-security "http://deb.debian.org/debian-security" \
-            --debootstrap-options "--keyring=/usr/share/keyrings/debian-archive-keyring.gpg" \
             --iso-application "iLinux" \
             --iso-publisher "iLinux Project" \
             --iso-volume "iLinux 1.0" \
@@ -62,7 +64,8 @@ jobs:
       - name: Build ISO
         run: |
           cd build
-          sudo lb build 2>&1 | tail -300
+          export DEBOOTSTRAP_OPTIONS="--keyring=/usr/share/keyrings/debian-archive-keyring.gpg"
+          sudo -E lb build 2>&1 | tail -300
 
       - name: Upload ISO artifact
         uses: actions/upload-artifact@v4
@@ -73,6 +76,7 @@ jobs:
           compression-level: 0
 
       - name: Show ISO info
+        if: always()
         run: |
-          ls -lh build/*.iso
+          ls -lh build/*.iso 2>/dev/null || echo "No ISO found — check build step logs"
           echo "Build complete!"
