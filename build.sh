@@ -53,7 +53,6 @@ configure() {
         --iso-application "iLinux" \
         --iso-publisher "iLinux Project" \
         --iso-volume "iLinux 1.0" \
-        --image-name "ilinux" \
         --memtest none \
         --win32-loader false
 
