@@ -14,10 +14,10 @@ jobs:
       options: --privileged
 
     steps:
-      - name: Install git for checkout
+      - name: Install git and tools
         run: |
           apt-get update -qq
-          apt-get install -y git
+          apt-get install -y git wget sassc python3
 
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -26,7 +26,73 @@ jobs:
         run: |
           apt-get install -y live-build debootstrap xorriso squashfs-tools \
             isolinux syslinux-common syslinux-utils \
-            dosfstools mtools
+            dosfstools mtools gtk2-engines-murrine gnome-themes-extra
+
+      - name: Download and install WhiteSur themes into filesystem overlay
+        run: |
+          CHROOT_ROOT="config/includes.chroot"
+          THEME_DIR="${CHROOT_ROOT}/usr/share/themes"
+          ICON_DIR="${CHROOT_ROOT}/usr/share/icons"
+          CURSOR_DIR="${CHROOT_ROOT}/usr/share/icons"
+          WALL_DIR="${CHROOT_ROOT}/usr/share/backgrounds/ilinux"
+          mkdir -p "$THEME_DIR" "$ICON_DIR" "$CURSOR_DIR" "$WALL_DIR"
+
+          echo "=== Installing WhiteSur GTK Theme ==="
+          cd /tmp
+          git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git
+          cd WhiteSur-gtk-theme
+          mkdir -p "$THEME_DIR"
+          ./install.sh -d "$THEME_DIR" -c Light -c Dark -l
+          cd /tmp && rm -rf WhiteSur-gtk-theme
+
+          echo "=== Installing WhiteSur Icon Theme ==="
+          cd /tmp
+          git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git
+          cd WhiteSur-icon-theme
+          ./install.sh -d "$ICON_DIR"
+          cd /tmp && rm -rf WhiteSur-icon-theme
+
+          echo "=== Installing WhiteSur Cursors ==="
+          cd /tmp
+          git clone --depth=1 https://github.com/vinceliuice/WhiteSur-cursors.git
+          cd WhiteSur-cursors
+          mkdir -p "$CURSOR_DIR/WhiteSur-cursors"
+          cp -r dist/* "$CURSOR_DIR/WhiteSur-cursors/" 2>/dev/null || \
+            cp -r build/WhiteSur-cursors/* "$CURSOR_DIR/WhiteSur-cursors/" 2>/dev/null || \
+            echo "Warning: cursor install path may differ"
+          cd /tmp && rm -rf WhiteSur-cursors
+
+          echo "=== Generating wallpaper ==="
+          python3 - << 'PYEOF'
+          import struct, zlib, os
+          width, height = 1920, 1080
+          rows = []
+          for y in range(height):
+              row = b'\x00'
+              for x in range(width):
+                  r = int(20 + (y / height) * 40 + (x / width) * 30)
+                  g = int(20 + (y / height) * 30 + (x / width) * 50)
+                  b = int(80 + (y / height) * 100 + (x / width) * 60)
+                  r, g, b = min(255, max(0, r)), min(255, max(0, g)), min(255, max(0, b))
+                  row += struct.pack('BBB', r, g, b)
+              rows.append(row)
+          def make_png(w, h, rows):
+              def chunk(ct, d):
+                  c = ct + d
+                  return struct.pack('>I', len(d)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+              sig = b'\x89PNG\r\n\x1a\n'
+              ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
+              return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(b''.join(rows), 9)) + chunk(b'IEND', b'')
+          d = 'config/includes.chroot/usr/share/backgrounds/ilinux'
+          os.makedirs(d, exist_ok=True)
+          with open(f'{d}/default.png', 'wb') as f:
+              f.write(make_png(width, height, rows))
+          print("Wallpaper generated.")
+          PYEOF
+
+          echo "=== Theme files installed ==="
+          ls "$THEME_DIR"/ || true
+          ls "$ICON_DIR"/ || true
 
       - name: Configure live-build
         run: |

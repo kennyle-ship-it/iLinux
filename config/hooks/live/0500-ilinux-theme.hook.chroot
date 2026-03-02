@@ -1,73 +1,10 @@
 #!/bin/bash
-# ── iLinux Theme Installation Hook ──
-# Runs inside the chroot during ISO build to install macOS themes
+# ── iLinux Branding Hook ──
+# Themes are pre-installed via the workflow. This hook handles branding only.
 
-THEME_DIR="/usr/share/themes"
-ICON_DIR="/usr/share/icons"
-WALLPAPER_DIR="/usr/share/backgrounds/ilinux"
-
-install_theme() {
-    local repo="$1" dir="$2"
-    echo "[iLinux] Cloning $repo..."
-    cd /tmp
-    if git clone --depth=1 "https://github.com/vinceliuice/${repo}.git" 2>/dev/null; then
-        cd "$repo"
-        if [ -f install.sh ]; then
-            bash install.sh $3 || echo "[iLinux] WARNING: $repo install.sh failed"
-        fi
-        cd /tmp && rm -rf "$repo"
-    else
-        echo "[iLinux] WARNING: Could not clone $repo (no network?), skipping"
-    fi
-}
-
-echo "[iLinux] Installing WhiteSur GTK theme..."
-install_theme "WhiteSur-gtk-theme" "WhiteSur-gtk-theme" "-l -c Light -c Dark"
-
-echo "[iLinux] Installing WhiteSur icon theme..."
-install_theme "WhiteSur-icon-theme" "WhiteSur-icon-theme" ""
-
-echo "[iLinux] Installing WhiteSur cursor theme..."
-install_theme "WhiteSur-cursors" "WhiteSur-cursors" ""
-
-echo "[iLinux] Generating macOS-style wallpaper..."
-if command -v python3 &>/dev/null; then
-    python3 - << 'PYEOF'
-import struct, zlib, os
-
-width, height = 1920, 1080
-rows = []
-for y in range(height):
-    row = b'\x00'
-    for x in range(width):
-        r = int(20 + (y / height) * 40 + (x / width) * 30)
-        g = int(20 + (y / height) * 30 + (x / width) * 50)
-        b = int(80 + (y / height) * 100 + (x / width) * 60)
-        r, g, b = min(255, max(0, r)), min(255, max(0, g)), min(255, max(0, b))
-        row += struct.pack('BBB', r, g, b)
-    rows.append(row)
-
-def make_png(w, h, rows):
-    def chunk(ctype, data):
-        c = ctype + data
-        return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
-    sig = b'\x89PNG\r\n\x1a\n'
-    ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
-    raw = b''.join(rows)
-    return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(raw, 9)) + chunk(b'IEND', b'')
-
-os.makedirs('/usr/share/backgrounds/ilinux', exist_ok=True)
-with open('/usr/share/backgrounds/ilinux/default.png', 'wb') as f:
-    f.write(make_png(width, height, rows))
-print("[iLinux] Wallpaper generated.")
-PYEOF
-else
-    echo "[iLinux] python3 not available, skipping wallpaper generation"
-fi
-
-echo "[iLinux] Setting permissions..."
-chmod -R 755 "$THEME_DIR/WhiteSur"* 2>/dev/null || true
-chmod -R 755 "$ICON_DIR/WhiteSur"* 2>/dev/null || true
+echo "[iLinux] Setting permissions on themes..."
+chmod -R 755 /usr/share/themes/WhiteSur* 2>/dev/null || true
+chmod -R 755 /usr/share/icons/WhiteSur* 2>/dev/null || true
 
 echo "[iLinux] Creating iLinux branding..."
 mkdir -p /usr/share/ilinux
@@ -85,4 +22,4 @@ if [ -f /etc/os-release ]; then
     sed -i 's/^NAME=.*/NAME="iLinux"/' /etc/os-release
 fi
 
-echo "[iLinux] Theme hook complete."
+echo "[iLinux] Branding complete."
