@@ -30,8 +30,7 @@ jobs:
             --system live \
             --distribution bookworm \
             --parent-distribution bookworm \
-            --debian-installer live \
-            --debian-installer-gui true \
+            --debian-installer false \
             --archive-areas "main contrib non-free non-free-firmware" \
             --parent-archive-areas "main contrib non-free non-free-firmware" \
             --architectures amd64 \
