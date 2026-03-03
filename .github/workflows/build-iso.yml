@@ -66,32 +66,28 @@ jobs:
           cd /tmp && rm -rf WhiteSur-cursors-master cursors.tar.gz
 
           echo "=== Generating wallpaper ==="
-          python3 << 'PYEOF'
-import struct, zlib, os
-width, height = 1920, 1080
-rows = []
-for y in range(height):
-    row = b'\x00'
-    for x in range(width):
-        r = int(20 + (y / height) * 40 + (x / width) * 30)
-        g = int(20 + (y / height) * 30 + (x / width) * 50)
-        b = int(80 + (y / height) * 100 + (x / width) * 60)
-        r, g, b = min(255, max(0, r)), min(255, max(0, g)), min(255, max(0, b))
-        row += struct.pack('BBB', r, g, b)
-    rows.append(row)
-def make_png(w, h, rows):
-    def chunk(ct, d):
-        c = ct + d
-        return struct.pack('>I', len(d)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
-    sig = b'\x89PNG\r\n\x1a\n'
-    ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
-    return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(b''.join(rows), 9)) + chunk(b'IEND', b'')
-d = 'config/includes.chroot/usr/share/backgrounds/ilinux'
-os.makedirs(d, exist_ok=True)
-with open(f'{d}/default.png', 'wb') as f:
-    f.write(make_png(width, height, rows))
-print("Wallpaper generated.")
-PYEOF
+          python3 -c "
+          import struct, zlib, os
+          w, h = 1920, 1080
+          rows = []
+          for y in range(h):
+              row = b'\x00'
+              for x in range(w):
+                  r = min(255, max(0, int(20 + (y/h)*40 + (x/w)*30)))
+                  g = min(255, max(0, int(20 + (y/h)*30 + (x/w)*50)))
+                  b = min(255, max(0, int(80 + (y/h)*100 + (x/w)*60)))
+                  row += struct.pack('BBB', r, g, b)
+              rows.append(row)
+          def mk(w, h, rows):
+              def ch(ct, d):
+                  c = ct + d
+                  return struct.pack('>I', len(d)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+              return b'\x89PNG\r\n\x1a\n' + ch(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)) + ch(b'IDAT', zlib.compress(b''.join(rows), 9)) + ch(b'IEND', b'')
+          d = 'config/includes.chroot/usr/share/backgrounds/ilinux'
+          os.makedirs(d, exist_ok=True)
+          open(f'{d}/default.png', 'wb').write(mk(w, h, rows))
+          print('Wallpaper generated.')
+          "
 
           echo "=== Theme files installed ==="
           ls "$THEME_DIR"/ 2>/dev/null || echo "No themes in $THEME_DIR"
