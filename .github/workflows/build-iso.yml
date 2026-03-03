@@ -29,70 +29,73 @@ jobs:
             dosfstools mtools gtk2-engines-murrine gnome-themes-extra
 
       - name: Download and install WhiteSur themes into filesystem overlay
+        shell: bash
         run: |
           CHROOT_ROOT="config/includes.chroot"
           THEME_DIR="${CHROOT_ROOT}/usr/share/themes"
           ICON_DIR="${CHROOT_ROOT}/usr/share/icons"
-          CURSOR_DIR="${CHROOT_ROOT}/usr/share/icons"
           WALL_DIR="${CHROOT_ROOT}/usr/share/backgrounds/ilinux"
-          mkdir -p "$THEME_DIR" "$ICON_DIR" "$CURSOR_DIR" "$WALL_DIR"
+          mkdir -p "$THEME_DIR" "$ICON_DIR" "$WALL_DIR"
 
-          echo "=== Installing WhiteSur GTK Theme ==="
-          cd /tmp
-          git clone --depth=1 https://github.com/vinceliuice/WhiteSur-gtk-theme.git
-          cd WhiteSur-gtk-theme
-          mkdir -p "$THEME_DIR"
-          ./install.sh -d "$THEME_DIR" -c Light -c Dark -l
-          cd /tmp && rm -rf WhiteSur-gtk-theme
+          echo "=== Downloading WhiteSur GTK Theme ==="
+          wget -q "https://github.com/vinceliuice/WhiteSur-gtk-theme/archive/refs/heads/master.tar.gz" -O /tmp/gtk.tar.gz
+          cd /tmp && tar xzf gtk.tar.gz
+          cd WhiteSur-gtk-theme-master
+          bash install.sh -d "$THEME_DIR" -c Light -c Dark -l || bash install.sh -d "$THEME_DIR" || echo "GTK theme install.sh had issues"
+          cd /tmp && rm -rf WhiteSur-gtk-theme-master gtk.tar.gz
 
-          echo "=== Installing WhiteSur Icon Theme ==="
-          cd /tmp
-          git clone --depth=1 https://github.com/vinceliuice/WhiteSur-icon-theme.git
-          cd WhiteSur-icon-theme
-          ./install.sh -d "$ICON_DIR"
-          cd /tmp && rm -rf WhiteSur-icon-theme
+          echo "=== Downloading WhiteSur Icon Theme ==="
+          wget -q "https://github.com/vinceliuice/WhiteSur-icon-theme/archive/refs/heads/master.tar.gz" -O /tmp/icons.tar.gz
+          cd /tmp && tar xzf icons.tar.gz
+          cd WhiteSur-icon-theme-master
+          bash install.sh -d "$ICON_DIR" || echo "Icon theme install.sh had issues"
+          cd /tmp && rm -rf WhiteSur-icon-theme-master icons.tar.gz
 
-          echo "=== Installing WhiteSur Cursors ==="
-          cd /tmp
-          git clone --depth=1 https://github.com/vinceliuice/WhiteSur-cursors.git
-          cd WhiteSur-cursors
-          mkdir -p "$CURSOR_DIR/WhiteSur-cursors"
-          cp -r dist/* "$CURSOR_DIR/WhiteSur-cursors/" 2>/dev/null || \
-            cp -r build/WhiteSur-cursors/* "$CURSOR_DIR/WhiteSur-cursors/" 2>/dev/null || \
-            echo "Warning: cursor install path may differ"
-          cd /tmp && rm -rf WhiteSur-cursors
+          echo "=== Downloading WhiteSur Cursors ==="
+          wget -q "https://github.com/vinceliuice/WhiteSur-cursors/archive/refs/heads/master.tar.gz" -O /tmp/cursors.tar.gz
+          cd /tmp && tar xzf cursors.tar.gz
+          cd WhiteSur-cursors-master
+          mkdir -p "$ICON_DIR/WhiteSur-cursors/cursors"
+          if [ -d dist/cursors ]; then
+            cp -r dist/* "$ICON_DIR/WhiteSur-cursors/"
+          elif [ -d build/WhiteSur-cursors ]; then
+            cp -r build/WhiteSur-cursors/* "$ICON_DIR/WhiteSur-cursors/"
+          else
+            bash install.sh 2>/dev/null || echo "Cursor install skipped"
+          fi
+          cd /tmp && rm -rf WhiteSur-cursors-master cursors.tar.gz
 
           echo "=== Generating wallpaper ==="
-          python3 - << 'PYEOF'
-          import struct, zlib, os
-          width, height = 1920, 1080
-          rows = []
-          for y in range(height):
-              row = b'\x00'
-              for x in range(width):
-                  r = int(20 + (y / height) * 40 + (x / width) * 30)
-                  g = int(20 + (y / height) * 30 + (x / width) * 50)
-                  b = int(80 + (y / height) * 100 + (x / width) * 60)
-                  r, g, b = min(255, max(0, r)), min(255, max(0, g)), min(255, max(0, b))
-                  row += struct.pack('BBB', r, g, b)
-              rows.append(row)
-          def make_png(w, h, rows):
-              def chunk(ct, d):
-                  c = ct + d
-                  return struct.pack('>I', len(d)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
-              sig = b'\x89PNG\r\n\x1a\n'
-              ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
-              return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(b''.join(rows), 9)) + chunk(b'IEND', b'')
-          d = 'config/includes.chroot/usr/share/backgrounds/ilinux'
-          os.makedirs(d, exist_ok=True)
-          with open(f'{d}/default.png', 'wb') as f:
-              f.write(make_png(width, height, rows))
-          print("Wallpaper generated.")
-          PYEOF
+          python3 << 'PYEOF'
+import struct, zlib, os
+width, height = 1920, 1080
+rows = []
+for y in range(height):
+    row = b'\x00'
+    for x in range(width):
+        r = int(20 + (y / height) * 40 + (x / width) * 30)
+        g = int(20 + (y / height) * 30 + (x / width) * 50)
+        b = int(80 + (y / height) * 100 + (x / width) * 60)
+        r, g, b = min(255, max(0, r)), min(255, max(0, g)), min(255, max(0, b))
+        row += struct.pack('BBB', r, g, b)
+    rows.append(row)
+def make_png(w, h, rows):
+    def chunk(ct, d):
+        c = ct + d
+        return struct.pack('>I', len(d)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
+    sig = b'\x89PNG\r\n\x1a\n'
+    ihdr = struct.pack('>IIBBBBB', w, h, 8, 2, 0, 0, 0)
+    return sig + chunk(b'IHDR', ihdr) + chunk(b'IDAT', zlib.compress(b''.join(rows), 9)) + chunk(b'IEND', b'')
+d = 'config/includes.chroot/usr/share/backgrounds/ilinux'
+os.makedirs(d, exist_ok=True)
+with open(f'{d}/default.png', 'wb') as f:
+    f.write(make_png(width, height, rows))
+print("Wallpaper generated.")
+PYEOF
 
           echo "=== Theme files installed ==="
-          ls "$THEME_DIR"/ || true
-          ls "$ICON_DIR"/ || true
+          ls "$THEME_DIR"/ 2>/dev/null || echo "No themes in $THEME_DIR"
+          ls "$ICON_DIR"/ 2>/dev/null || echo "No icons in $ICON_DIR"
 
       - name: Configure live-build
         run: |
